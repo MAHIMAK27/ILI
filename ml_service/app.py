@@ -1,58 +1,47 @@
 from flask import Flask, request, jsonify
 import pandas as pd
-import os
-from model_pipeline import ILIPredictorPipeline
+from model_pipeline import ILITimeSeriesPredictor
 
 app = Flask(__name__)
-pipeline = ILIPredictorPipeline()
-
-@app.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({"status": "healthy", "service": "ILI Prediction ML API"})
+predictor = ILITimeSeriesPredictor()
 
 @app.route('/predict', methods=['POST'])
-def predict_risk():
+def predict():
     try:
-        # Check if file is in request
-        if 'file' not in request.files:
-            return jsonify({"error": "No file uploaded"}), 400
+        data = request.json
+        if not data or 'records' not in data:
+            return jsonify({'error': 'Missing records array in request body'}), 400
             
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({"error": "Empty filename"}), 400
-            
-        # Read dataset
-        if file.filename.endswith('.csv'):
-            df = pd.read_csv(file)
-        elif file.filename.endswith(('.xls', '.xlsx')):
-            df = pd.read_excel(file)
-        else:
-            return jsonify({"error": "Unsupported file format. Please upload CSV or Excel."}), 400
-            
-        # Predict
-        risk_scores = pipeline.predict(df)
+        df = pd.DataFrame(data['records'])
         
-        # Attach predictions to dataframe
-        df['predicted_risk_score'] = risk_scores
-        df['risk_level'] = pd.cut(df['predicted_risk_score'], 
-                                  bins=[-1, 60, 80, 100], 
-                                  labels=['Low', 'Medium', 'High'])
-                                  
-        # Return summary
-        summary = {
-            "total_records_processed": len(df),
-            "high_risk_count": int(sum(df['risk_level'] == 'High')),
-            "average_risk_score": float(df['predicted_risk_score'].mean()),
-            "predictions": df[['date', 'predicted_risk_score', 'risk_level']].to_dict(orient='records')[:10] # Top 10 for preview
-        }
+        # We need historical records to generate lag features!
+        raw_predictions, risk_scores = predictor.predict(df)
         
+        results = []
+        for i in range(len(df)):
+            results.append({
+                'date': str(df['date'].iloc[i]) if 'date' in df.columns else f"Record_{i}",
+                'predicted_cases': float(raw_predictions[i]),
+                'risk_score': float(risk_scores[i])
+            })
+            
         return jsonify({
-            "message": "Prediction successful",
-            "data": summary
+            'status': 'success',
+            'predictions': results
         })
-        
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/train', methods=['POST'])
+def train():
+    try:
+        data = request.json
+        df = pd.DataFrame(data['records'])
+        avg_r2 = predictor.train_and_validate(df)
+        return jsonify({'status': 'success', 'validation_r2_score': avg_r2})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
