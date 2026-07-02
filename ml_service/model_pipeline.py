@@ -114,6 +114,7 @@ class ILITimeSeriesPredictor:
         
         X_scaled = saved['scaler'].transform(features)
         predictions = saved['model'].predict(X_scaled)
+        predictions = np.clip(predictions, 0, None) # Prevent negative predictions
         
         # Risk Score normalization
         max_pred = max(predictions) if max(predictions) > 0 else 1
@@ -128,10 +129,10 @@ if __name__ == "__main__":
     
     mock_data = pd.DataFrame({
         'date': dates,
-        'fever_count': base_trend + np.random.normal(0, 5, 100),
-        'cough_count': base_trend * 1.2 + np.random.normal(0, 10, 100),
+        'fever_count': np.clip(base_trend + np.random.normal(0, 5, 100), 0, None),
+        'cough_count': np.clip(base_trend * 1.2 + np.random.normal(0, 10, 100), 0, None),
         'population_density': 500,
-        'ili_cases_confirmed': base_trend * 1.5 + np.random.normal(0, 8, 100) # Target correlated with trend
+        'ili_cases_confirmed': np.clip(base_trend * 1.5 + np.random.normal(0, 8, 100), 0, None) # Target correlated with trend
     })
     
     pipeline = ILITimeSeriesPredictor()

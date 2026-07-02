@@ -1,0 +1,4 @@
+date,state,district,region_code,fever_count,cough_count,sore_throat_count,shortness_of_breath_count,population_density,ili_cases_confirmed
+2026-07-01,Kerala,Kochi,KL01,50,30,10,5,1500,2
+2026-07-02,Kerala,Kochi,KL01,80,40,15,8,1500,4
+2026-07-03,Karnataka,Bangalore,KA01,100,90,40,10,4000,5

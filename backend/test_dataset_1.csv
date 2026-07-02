@@ -1,0 +1,4 @@
+date,state,district,region_code,fever_count,cough_count,sore_throat_count,shortness_of_breath_count,population_density,ili_cases_confirmed
+2026-06-01,Delhi,Central,DL01,150,100,50,10,11000,5
+2026-06-02,Delhi,Central,DL01,200,120,60,15,11000,8
+2026-06-03,Maharashtra,Mumbai,MH01,300,200,100,20,20000,10

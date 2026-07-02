@@ -1,19 +1,27 @@
 import { useState } from 'react';
 import { Activity } from 'lucide-react';
+import api from '../api/axios';
 
 const Login = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate login
-    setTimeout(() => {
-      setLoading(false);
+    setError(null);
+    try {
+      const response = await api.post('/auth/login', { email, password });
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
       onLogin();
-    }, 1000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to login');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -23,6 +31,12 @@ const Login = ({ onLogin }) => {
         <h2 style={{ margin: 0, background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-purple))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>ILI Predictor</h2>
         <p style={{ color: 'var(--text-secondary)', marginTop: '8px' }}>Login to access Command Center</p>
       </div>
+
+      {error && (
+        <div style={{ padding: '12px', marginBottom: '16px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderRadius: '8px', border: '1px solid var(--danger)', fontSize: '14px', textAlign: 'center' }}>
+          {error}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">

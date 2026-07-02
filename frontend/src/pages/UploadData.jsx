@@ -1,15 +1,18 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { UploadCloud, FileText, CheckCircle, AlertCircle, Play } from 'lucide-react';
+import api from '../api/axios';
 
 const UploadData = () => {
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState('idle'); // idle, uploading, processing, complete, error
   const [progress, setProgress] = useState(0);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
       setStatus('idle');
+      setErrorMsg('');
     }
   };
 
@@ -22,29 +25,39 @@ const UploadData = () => {
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       setFile(e.dataTransfer.files[0]);
       setStatus('idle');
+      setErrorMsg('');
     }
   };
 
-  const processFile = () => {
+  const processFile = async () => {
     if (!file) return;
     
     setStatus('uploading');
     setProgress(0);
+    setErrorMsg('');
     
-    // Simulate upload and processing
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setStatus('processing');
-          setTimeout(() => {
-            setStatus('complete');
-          }, 2000);
-          return 100;
+    const formData = new FormData();
+    formData.append('dataset', file);
+    
+    try {
+      await api.post('/upload-data', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setProgress(percentCompleted);
+          if (percentCompleted === 100) {
+            setStatus('processing');
+          }
         }
-        return prev + 5;
       });
-    }, 100);
+      
+      setStatus('complete');
+    } catch (err) {
+      setStatus('error');
+      setErrorMsg(err.response?.data?.message || 'Failed to process file');
+    }
   };
 
   return (
@@ -105,6 +118,16 @@ const UploadData = () => {
               </div>
               <div style={{ width: '100%', height: '6px', background: 'var(--panel-border)', borderRadius: '3px', overflow: 'hidden' }}>
                 <div style={{ width: `${progress}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent-blue), var(--accent-purple))', transition: 'width 0.2s ease' }}></div>
+              </div>
+            </div>
+          )}
+
+          {status === 'error' && (
+            <div style={{ marginTop: '24px', padding: '16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--danger)' }}>
+              <AlertCircle size={24} />
+              <div>
+                <div style={{ fontWeight: 600 }}>Processing Failed</div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>{errorMsg}</div>
               </div>
             </div>
           )}

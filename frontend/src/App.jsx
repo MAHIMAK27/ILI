@@ -9,12 +9,18 @@ import { useState } from 'react';
 import './index.css';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setIsAuthenticated(false);
+  };
 
   return (
     <Router>
       <div className="app-container">
-        {isAuthenticated && <Sidebar onLogout={() => setIsAuthenticated(false)} />}
+        {isAuthenticated && <Sidebar onLogout={handleLogout} />}
         <main className={isAuthenticated ? "main-content" : "auth-container"}>
           <Routes>
             <Route path="/login" element={

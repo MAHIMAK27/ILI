@@ -1,19 +1,52 @@
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Activity, AlertTriangle, Users } from 'lucide-react';
-import { useState } from 'react';
-
-const mockSymptomData = [
-  { week: 'W1', fever: 400, cough: 240, soreThroat: 240 },
-  { week: 'W2', fever: 300, cough: 139, soreThroat: 221 },
-  { week: 'W3', fever: 200, cough: 980, soreThroat: 229 },
-  { week: 'W4', fever: 278, cough: 390, soreThroat: 200 },
-  { week: 'W5', fever: 189, cough: 480, soreThroat: 218 },
-  { week: 'W6', fever: 239, cough: 380, soreThroat: 250 },
-  { week: 'W7', fever: 349, cough: 430, soreThroat: 210 },
-];
+import { useState, useEffect } from 'react';
+import api from '../api/axios';
 
 const StateInsights = () => {
   const [selectedState, setSelectedState] = useState('Maharashtra');
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [disabledMessage, setDisabledMessage] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get(`/state-insights/${selectedState}`);
+        setData(response.data);
+      } catch (err) {
+        if (err.response && err.response.status === 400) {
+          setDisabledMessage(err.response.data.error);
+        } else {
+          console.error("Error fetching state insights", err);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [selectedState]);
+
+  if (disabledMessage) {
+    return (
+      <div style={{ padding: '32px', textAlign: 'center' }}>
+        <div className="glass-panel" style={{ display: 'inline-block', padding: '48px', maxWidth: '600px' }}>
+          <Activity size={48} color="var(--text-secondary)" style={{ margin: '0 auto 16px' }} />
+          <h2 style={{ marginBottom: '16px' }}>Module Disabled</h2>
+          <p style={{ color: 'var(--text-secondary)' }}>{disabledMessage}</p>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '8px' }}>
+            The most recently uploaded dataset does not contain geographical columns. 
+            State Insights require regional data to function.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading || !data) {
+    return <div style={{ padding: '32px' }}>Loading Insights...</div>;
+  }
 
   return (
     <div>
@@ -39,8 +72,10 @@ const StateInsights = () => {
         <div className="glass-panel metric-card">
           <div className="metric-info">
             <h3>Current Risk Level</h3>
-            <div className="metric-value" style={{ color: 'var(--danger)' }}>High</div>
-            <div className="metric-trend">Risk Score: 85/100</div>
+            <div className="metric-value" style={{ color: data.averageRisk > 80 ? 'var(--danger)' : data.averageRisk > 60 ? 'var(--warning)' : 'var(--accent-blue)' }}>
+              {data.averageRisk > 80 ? 'High' : data.averageRisk > 60 ? 'Moderate' : 'Low'}
+            </div>
+            <div className="metric-trend">Risk Score: {data.averageRisk}/100</div>
           </div>
           <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px', color: 'var(--danger)' }}>
             <AlertTriangle size={24} />
@@ -50,7 +85,7 @@ const StateInsights = () => {
         <div className="glass-panel metric-card">
           <div className="metric-info">
             <h3>Predicted New Cases</h3>
-            <div className="metric-value">2,450</div>
+            <div className="metric-value">{data.predictedCases.toLocaleString()}</div>
             <div className="metric-trend trend-up">Next 7 days</div>
           </div>
           <div style={{ padding: '12px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '12px', color: 'var(--accent-blue)' }}>
@@ -61,8 +96,8 @@ const StateInsights = () => {
         <div className="glass-panel metric-card">
           <div className="metric-info">
             <h3>Dominant Symptom</h3>
-            <div className="metric-value" style={{ fontSize: '24px' }}>Fever & Cough</div>
-            <div className="metric-trend">Account for 72% of reports</div>
+            <div className="metric-value" style={{ fontSize: '24px' }}>{data.dominantSymptom}</div>
+            <div className="metric-trend">Account for most reports</div>
           </div>
           <div style={{ padding: '12px', background: 'rgba(139, 92, 246, 0.1)', borderRadius: '12px', color: 'var(--accent-purple)' }}>
             <Activity size={24} />
@@ -75,7 +110,7 @@ const StateInsights = () => {
           <h3>Symptom Distribution Over Time</h3>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockSymptomData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <BarChart data={data.weeklyTrend} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--panel-border)" vertical={false} />
                 <XAxis dataKey="week" stroke="var(--text-secondary)" tick={{fill: 'var(--text-secondary)'}} />
                 <YAxis stroke="var(--text-secondary)" tick={{fill: 'var(--text-secondary)'}} />
@@ -94,15 +129,15 @@ const StateInsights = () => {
           <h3>Prediction Breakdown vs Actual</h3>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockSymptomData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <LineChart data={data.predictionVsActual} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--panel-border)" vertical={false} />
                 <XAxis dataKey="week" stroke="var(--text-secondary)" tick={{fill: 'var(--text-secondary)'}} />
                 <YAxis stroke="var(--text-secondary)" tick={{fill: 'var(--text-secondary)'}} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: 'var(--panel-bg)', borderColor: 'var(--panel-border)', borderRadius: '8px', backdropFilter: 'blur(10px)' }}
                 />
-                <Line type="monotone" dataKey="fever" stroke="var(--accent-purple)" strokeWidth={3} name="Predicted Cases" />
-                <Line type="monotone" dataKey="cough" stroke="var(--success)" strokeDasharray="5 5" strokeWidth={2} name="Actual Cases" />
+                <Line type="monotone" dataKey="predicted" stroke="var(--accent-purple)" strokeWidth={3} name="Predicted Cases" />
+                <Line type="monotone" dataKey="actual" stroke="var(--success)" strokeDasharray="5 5" strokeWidth={2} name="Actual Cases" />
               </LineChart>
             </ResponsiveContainer>
           </div>

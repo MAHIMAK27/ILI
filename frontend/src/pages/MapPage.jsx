@@ -2,19 +2,10 @@ import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import { Activity } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
-const indiaCenter = [22.5937, 78.9629];
+import { useState, useEffect } from 'react';
+import api from '../api/axios';
 
-// Mock data for regions
-const regionData = [
-  { id: 1, name: 'Delhi', coords: [28.6139, 77.2090], riskScore: 82, cases: 1450 },
-  { id: 2, name: 'Mumbai', coords: [19.0760, 72.8777], riskScore: 88, cases: 2100 },
-  { id: 3, name: 'Bangalore', coords: [12.9716, 77.5946], riskScore: 45, cases: 420 },
-  { id: 4, name: 'Kolkata', coords: [22.5726, 88.3639], riskScore: 65, cases: 890 },
-  { id: 5, name: 'Chennai', coords: [13.0827, 80.2707], riskScore: 55, cases: 670 },
-  { id: 6, name: 'Hyderabad', coords: [17.3850, 78.4867], riskScore: 35, cases: 310 },
-  { id: 7, name: 'Pune', coords: [18.5204, 73.8567], riskScore: 78, cases: 1100 },
-  { id: 8, name: 'Ahmedabad', coords: [23.0225, 72.5714], riskScore: 52, cases: 540 },
-];
+const indiaCenter = [22.5937, 78.9629];
 
 const getRiskColor = (score) => {
   if (score > 80) return '#ef4444'; // Danger
@@ -23,6 +14,40 @@ const getRiskColor = (score) => {
 };
 
 const MapPage = () => {
+  const [regionData, setRegionData] = useState([]);
+  const [disabledMessage, setDisabledMessage] = useState(null);
+
+  useEffect(() => {
+    const fetchMap = async () => {
+      try {
+        const response = await api.get('/regional-map');
+        setRegionData(response.data);
+      } catch (err) {
+        if (err.response && err.response.status === 400) {
+          setDisabledMessage(err.response.data.error);
+        } else {
+          console.error("Error fetching map data", err);
+        }
+      }
+    };
+    fetchMap();
+  }, []);
+
+  if (disabledMessage) {
+    return (
+      <div style={{ padding: '32px', textAlign: 'center' }}>
+        <div className="glass-panel" style={{ display: 'inline-block', padding: '48px', maxWidth: '600px' }}>
+          <Activity size={48} color="var(--text-secondary)" style={{ margin: '0 auto 16px' }} />
+          <h2 style={{ marginBottom: '16px' }}>Module Disabled</h2>
+          <p style={{ color: 'var(--text-secondary)' }}>{disabledMessage}</p>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '8px' }}>
+            The most recently uploaded dataset does not contain geographical columns (state, district, region_code, etc.). 
+            Please upload a Geographic Dataset to enable this view.
+          </p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
@@ -71,11 +96,11 @@ const MapPage = () => {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           />
           
-          {regionData.map(region => (
+          {regionData.map((region, idx) => (
             <CircleMarker
-              key={region.id}
-              center={region.coords}
-              radius={region.riskScore / 3}
+              key={region.state || idx}
+              center={[region.latitude, region.longitude]}
+              radius={Math.max(region.riskScore / 3, 5)}
               pathOptions={{
                 color: getRiskColor(region.riskScore),
                 fillColor: getRiskColor(region.riskScore),
@@ -85,14 +110,14 @@ const MapPage = () => {
             >
               <Popup className="custom-popup">
                 <div style={{ padding: '4px' }}>
-                  <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', borderBottom: '1px solid #ccc', paddingBottom: '4px' }}>{region.name}</h3>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', borderBottom: '1px solid #ccc', paddingBottom: '4px' }}>{region.state}</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#666' }}>Risk Score:</span>
                       <strong style={{ color: getRiskColor(region.riskScore) }}>{region.riskScore}/100</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#666' }}>Active Cases:</span>
+                      <span style={{ color: '#666' }}>Predicted Cases:</span>
                       <strong>{region.cases.toLocaleString()}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>

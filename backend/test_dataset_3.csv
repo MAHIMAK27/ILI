@@ -1,0 +1,4 @@
+date,state,district,region_code,fever_count,cough_count,sore_throat_count,shortness_of_breath_count,population_density,ili_cases_confirmed
+2026-08-01,Gujarat,Ahmedabad,GJ01,400,300,150,50,5000,20
+2026-08-02,Gujarat,Ahmedabad,GJ01,450,320,180,60,5000,25
+2026-08-03,Rajasthan,Jaipur,RJ01,200,150,80,20,1000,12

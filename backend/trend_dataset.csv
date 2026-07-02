@@ -1,0 +1,6 @@
+date,fever_count,cough_count,sore_throat_count,shortness_of_breath_count,population_density,ili_cases_confirmed
+2026-07-01,100,90,40,10,4000,5
+2026-07-02,400,300,150,50,5000,20
+2026-07-03,450,320,180,60,5000,25
+2026-07-04,200,150,80,20,1000,12
+2026-07-05,220,160,90,25,1000,15
